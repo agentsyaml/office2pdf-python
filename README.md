@@ -102,13 +102,32 @@ No LibreOffice, Docker, Chromium, or external system service is required by this
 
 ## CI
 
-The CI workflow runs on `ubuntu-latest`, `macos-latest`, and `windows-latest` for Python 3.10, 3.11, 3.12, 3.13, and 3.14. It builds and installs the extension as an editable package, runs pytest, performs an import smoke test, and builds a wheel. Rust `fmt` and `clippy` run once on Ubuntu with Python 3.12.
+The CI workflow runs tests on `ubuntu-latest`, `macos-latest`, and `windows-2022` for Python 3.10, 3.11, 3.12, 3.13, and 3.14. It builds and installs the extension as an editable package, runs pytest, and performs an import smoke test.
+
+Release-style wheel building is checked once in a dedicated wheel smoke job. Full Linux, macOS, and Windows release wheels are built by the release workflow instead of every CI matrix job. Rust `fmt` and `clippy` run in a separate Ubuntu lint job.
 
 ## Release
 
-The release workflow runs on `v*` tags or manual dispatch. It builds Linux, macOS, and Windows wheels plus an sdist, then publishes with PyPI Trusted Publishing using GitHub OIDC (`id-token: write`).
+The release workflow runs on `v*` tags or manual dispatch. It builds Linux, macOS, and Windows wheels plus an sdist, then publishes with PyPI Trusted Publishing using GitHub OIDC (`id-token: write`). No PyPI API token is required.
 
-Before publishing, configure the PyPI project `office2pdf-python` with a trusted publisher for this repository, workflow file `.github/workflows/release.yml`, and environment `pypi`.
+Before the first publish, configure PyPI with a pending trusted publisher:
+
+- PyPI project name: `office2pdf-python`
+- Owner: `agentsyaml`
+- Repository: `office2pdf-python`
+- Workflow: `release.yml`
+- Environment: `pypi`
+
+Create a matching GitHub environment named `pypi` and require manual approval for safer first releases. A pending trusted publisher can create the PyPI project on first use, but it does not reserve the project name before that first publish.
+
+To publish a release automatically, update the version in `pyproject.toml` and `Cargo.toml`, commit the change, then push a matching tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag push starts `.github/workflows/release.yml`, builds artifacts, publishes to PyPI after the `pypi` environment approval, and creates a GitHub Release for tag-triggered runs.
 
 ## Upstream dependency
 

@@ -6,37 +6,51 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_NO_CACHE_DIR: "1"
+
 jobs:
+  lint:
+    name: Rust lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust fmt
+        run: cargo fmt --check
+
+      - name: Rust clippy
+        run: cargo clippy --all-targets -- -D warnings
+
   test:
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-2022]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Rust lint components
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: rustup component add rustfmt clippy
-
-      - name: Rust fmt
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: cargo fmt --check
-
-      - name: Rust clippy
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: cargo clippy --all-targets
 
       - name: Install test tooling
         run: python -m pip install --upgrade pip maturin pytest
@@ -49,6 +63,21 @@ jobs:
 
       - name: Import smoke test
         run: python -c "import office2pdf; print(office2pdf.__version__)"
+
+  wheel-smoke:
+    name: Wheel smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install maturin
+        run: python -m pip install --upgrade pip maturin
 
       - name: Build wheel
         run: maturin build --locked --release --compatibility pypi
