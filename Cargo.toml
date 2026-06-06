@@ -1,0 +1,16 @@
+[package]
+name = "office2pdf-python"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "PyO3 bindings for office2pdf"
+repository = "https://github.com/agentsyaml/office2pdf-python"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+office2pdf = "0.6"
+pyo3 = { version = "0.22", features = ["abi3-py310", "extension-module"] }

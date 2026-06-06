@@ -1,0 +1,59 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "office2pdf-python"
+version = "0.1.0"
+description = "Python bindings for the pure-Rust office2pdf converter"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "office2pdf-python contributors" }
+]
+keywords = ["office", "pdf", "docx", "pptx", "xlsx", "pyo3", "maturin"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Rust",
+  "Typing :: Typed",
+]
+
+[project.scripts]
+office2pdf = "office2pdf.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/agentsyaml/office2pdf-python"
+Repository = "https://github.com/agentsyaml/office2pdf-python"
+Issues = "https://github.com/agentsyaml/office2pdf-python/issues"
+Upstream = "https://github.com/developer0hye/office2pdf"
+
+[dependency-groups]
+dev = [
+  "maturin>=1.7,<2",
+  "pytest>=8",
+]
+
+[tool.maturin]
+module-name = "office2pdf._native"
+python-source = "."
+features = ["pyo3/extension-module"]
+include = [
+  "office2pdf/**/*.py",
+  "office2pdf/**/*.pyi",
+  "office2pdf/py.typed",
+  "README.md",
+  "LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
