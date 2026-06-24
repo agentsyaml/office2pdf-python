@@ -42,30 +42,93 @@ The CLI accepts DOCX, PPTX, and XLSX input paths and writes the converted PDF by
 
 ### `Format`
 
-Enum values: `Format.DOCX`, `Format.PPTX`, and `Format.XLSX`.
+`Format` identifies the input Office format for byte-based conversion:
+
+- `Format.DOCX` (`"docx"`)
+- `Format.PPTX` (`"pptx"`)
+- `Format.XLSX` (`"xlsx"`)
+
+### `PdfStandard`
+
+`PdfStandard` currently supports `pdf/a-2b`:
+
+- canonical: `PdfStandard.PDF_A_2B`
+- compatibility alias: `PdfStandard.PDF_A_2_B`
+
+`PdfStandard.from_value()` accepts both forms and related normalizations (`"pdf/a-2b"`, `"pdfa2b"`).
+
+### `PaperSize`
+
+- `PaperSize.A4`
+- `PaperSize.LETTER`
+- `PaperSize.LEGAL`
+
+### `CustomPaperSize`
+
+`CustomPaperSize(width: float, height: float)` stores explicit PDF point dimensions, matching upstream `PaperSize::Custom` (`1 point = 1/72 inch`).
 
 ### `ConvertOptions`
 
-Dataclass fields:
+All options are stored in a Python dataclass and translated to native options via `to_native()`.
 
-- `page_range: str | None` — rejected when set because `office2pdf 0.6.0` does not expose a native field for it.
-- `sheet_filter: Sequence[str] | None` — maps to upstream `sheet_names` for XLSX conversion.
-- `slide_range: str | None` — accepts upstream strings like `"1-5"` or `"3"`.
-- `paper_size: str | None` — accepts upstream `"a4"`, `"letter"`, or `"legal"`.
-- `landscape: bool | None` — maps to upstream orientation control.
-- `font_paths: Sequence[str | pathlib.Path]` — additional font directories.
-- `pdf_standard: str | None` — currently supports `"pdf/a-2b"`.
-- `include_warnings: bool` — controls whether returned warnings are included in `ConversionResult`.
-- `memory_limit_mb: int | None` — rejected when set because `office2pdf 0.6.0` does not expose a native field for it.
-- `streaming: bool` — enables upstream streaming mode for supported formats.
+- `sheet_names: Sequence[str] | None`
+- `sheet_filter: Sequence[str] | None`
+
+  These are aliases for XLSX sheet selection. If both are provided, they must be equal.
+
+- `slide_range: SlideRange | str | None`
+
+  `SlideRange` supports `"1-5"` parsing and also accepts explicit `SlideRange(1, 5)`. Values are normalized to `start-end` strings for native conversion.
+
+- `pdf_standard: PdfStandard | str | None`
+
+  Only `pdf/a-2b` is supported at this version.
+
+- `paper_size: PaperSize | CustomPaperSize | str | None`
+
+  String values normalize to named page sizes.
+
+- `font_paths: Sequence[str | pathlib.Path]`
+- `landscape: bool | None`
+- `tagged: bool | None`
+- `pdf_ua: bool | None`
+- `streaming: bool`
+- `streaming_chunk_size: int | None`
+- `include_warnings: bool`
+
+Unsupported options are rejected to preserve API compatibility with upstream `office2pdf 0.6.0`:
+
+- `page_range: str | None`
+- `memory_limit_mb: int | None`
 
 ### `ConversionResult`
 
-Dataclass fields:
-
 - `pdf: bytes`
-- `warnings: tuple[str, ...]`
-- `metrics: Mapping[str, Any] | None`
+- `warnings: tuple[ConvertWarning, ...]`
+- `metrics: ConvertMetrics | None`
+- `warning_messages: tuple[str, ...]` property collecting warning messages.
+
+### Warning types
+
+Warning payloads from the native layer are mapped to typed subclasses of `ConvertWarning`:
+
+- `UnsupportedElementWarning(format, element)`
+- `PartialElementWarning(format, element, detail)`
+- `FallbackUsedWarning(format, from_, to)`
+- `ParseSkippedWarning(format, reason)`
+- and a base `ConvertWarning` for legacy/unknown forms.
+
+### `ConvertMetrics`
+
+- `parse_duration`
+- `codegen_duration`
+- `compile_duration`
+- `total_duration`
+- `input_size_bytes`
+- `output_size_bytes`
+- `page_count`
+
+Duration fields are reported in seconds.
 
 ### Functions
 
@@ -75,7 +138,27 @@ convert_path(path: str | pathlib.Path, options: ConvertOptions | None = None) ->
 infer_format(path: str | pathlib.Path) -> Format
 ```
 
-`convert_path()` validates the file extension before calling the native extension. `convert_bytes()` requires an explicit format.
+- `infer_format()` reads the file suffix and accepts only `.docx`, `.pptx`, or `.xlsx`.
+- `convert_path()` validates the file extension before conversion.
+- `convert_bytes()` requires an explicit input `format`.
+
+## Exceptions
+
+Re-exported exception hierarchy:
+
+- `Office2PdfError`
+- `UnsupportedFormatError`
+- `Office2PdfIoError`
+- `Office2PdfParseError`
+- `Office2PdfRenderError`
+- `UnsupportedEncryptionError`
+- `UnsupportedOptionError`
+
+## API scope
+
+Version `0.2.0` exposes the upstream `office2pdf 0.6.0` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
+
+The upstream `pdf_ops` feature (`page_count`, `merge`, `split`), internal IR/parser/render modules, TypeScript helpers, and WASM APIs are intentionally out of scope for this Python release.
 
 ## Local development
 
@@ -123,8 +206,8 @@ Create a matching GitHub environment named `pypi` and require manual approval fo
 To publish a release automatically, update the version in `pyproject.toml` and `Cargo.toml`, commit the change, then push a matching tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 The tag push starts `.github/workflows/release.yml`, builds artifacts, publishes to PyPI after the `pypi` environment approval, and creates a GitHub Release for tag-triggered runs.

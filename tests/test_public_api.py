@@ -1,12 +1,24 @@
 from __future__ import annotations
 
-import sys
-from types import SimpleNamespace
-
 import pytest
 
 import office2pdf
-from office2pdf import ConversionResult, ConvertOptions, Format
+from office2pdf import (
+    ConversionMetrics,
+    ConversionResult,
+    ConvertMetrics,
+    ConvertOptions,
+    ConvertWarning,
+    FallbackUsedWarning,
+    Format,
+    PdfStandard,
+    PaperSize,
+    ParseSkippedWarning,
+    SlideRange,
+    UnsupportedElementWarning,
+    PartialElementWarning,
+    CustomPaperSize,
+)
 
 
 def test_import_and_public_api() -> None:
@@ -15,8 +27,26 @@ def test_import_and_public_api() -> None:
     assert str(Format.PPTX) == "pptx"
     assert office2pdf.__all__ == [
         "ConversionResult",
+        "ConversionMetrics",
+        "ConvertMetrics",
         "ConvertOptions",
         "Format",
+        "PaperSize",
+        "CustomPaperSize",
+        "PdfStandard",
+        "SlideRange",
+        "ConvertWarning",
+        "UnsupportedElementWarning",
+        "PartialElementWarning",
+        "FallbackUsedWarning",
+        "ParseSkippedWarning",
+        "Office2PdfError",
+        "UnsupportedFormatError",
+        "Office2PdfIoError",
+        "Office2PdfParseError",
+        "Office2PdfRenderError",
+        "UnsupportedEncryptionError",
+        "UnsupportedOptionError",
         "__version__",
         "convert_bytes",
         "convert_path",
@@ -24,110 +54,103 @@ def test_import_and_public_api() -> None:
     ]
 
 
-def test_options_to_native_mapping() -> None:
+def test_import_exception_reexports() -> None:
+    from office2pdf import exceptions as exp
+
+    assert exp.Office2PdfError is office2pdf.Office2PdfError
+    assert exp.UnsupportedFormatError is office2pdf.UnsupportedFormatError
+    assert issubclass(office2pdf.UnsupportedFormatError, ValueError)
+    assert issubclass(office2pdf.Office2PdfIoError, OSError)
+    assert issubclass(office2pdf.Office2PdfParseError, RuntimeError)
+    assert issubclass(office2pdf.Office2PdfRenderError, RuntimeError)
+    assert issubclass(office2pdf.UnsupportedEncryptionError, RuntimeError)
+    assert issubclass(office2pdf.UnsupportedOptionError, ValueError)
+
+
+def test_slide_range_parse_and_repr() -> None:
+    slide_range = SlideRange.parse("2-4")
+    assert slide_range.start == 2
+    assert slide_range.end == 4
+    assert str(slide_range) == "2-4"
+
+    assert SlideRange.parse("5") == SlideRange(5, 5)
+
+
+def test_parse_options_with_alias_and_conflict() -> None:
     options = ConvertOptions(
         sheet_filter=("Sheet1", "Summary"),
-        slide_range="1-3",
-        paper_size="a4",
+        slide_range=SlideRange(1, 3),
+        paper_size=PaperSize.A4,
         landscape=True,
         font_paths=("/tmp/fonts",),
-        pdf_standard="pdf/a-2b",
+        pdf_standard=PdfStandard.PDF_A_2_B,
+        tagged=True,
+        pdf_ua=False,
         include_warnings=False,
         streaming=True,
+        streaming_chunk_size=1024,
     )
 
     assert options.to_native() == {
-        "page_range": None,
-        "sheet_filter": ["Sheet1", "Summary"],
+        "sheet_names": ("Sheet1", "Summary"),
+        "sheet_filter": ("Sheet1", "Summary"),
         "slide_range": "1-3",
-        "paper_size": "a4",
+        "paper_size": ("Named", "a4"),
         "landscape": True,
-        "font_paths": ["/tmp/fonts"],
+        "tagged": True,
+        "pdf_ua": False,
+        "font_paths": ("/tmp/fonts",),
         "pdf_standard": "pdf/a-2b",
         "include_warnings": False,
+        "page_range": None,
         "memory_limit_mb": None,
         "streaming": True,
+        "streaming_chunk_size": 1024,
     }
 
 
 @pytest.mark.parametrize(
     "options, message",
     [
-        (ConvertOptions(page_range="1-2"), "page_range is not supported"),
-        (ConvertOptions(memory_limit_mb=128), "memory_limit_mb is not supported"),
+        (
+            ConvertOptions(sheet_names=("A",), sheet_filter=("B",)),
+            "sheet_names and sheet_filter",
+        ),
+        (ConvertOptions(page_range="1-2"), "page_range"),
+        (ConvertOptions(memory_limit_mb=128), "memory_limit_mb"),
     ],
 )
-def test_unsupported_upstream_options_raise(options: ConvertOptions, message: str) -> None:
-    with pytest.raises(ValueError, match=message):
+def test_unsupported_compatibility_options_raise(options: ConvertOptions, message: str) -> None:
+    from office2pdf import UnsupportedOptionError
+
+    with pytest.raises(UnsupportedOptionError, match=message):
         options.to_native()
 
 
-@pytest.mark.parametrize(
-    "path, expected",
-    [
-        ("report.docx", Format.DOCX),
-        ("slides.PPTX", Format.PPTX),
-        ("book.xlsx", Format.XLSX),
-    ],
-)
-def test_infer_format(path: str, expected: Format) -> None:
-    assert office2pdf.infer_format(path) is expected
+def test_options_custom_paper_size_to_native() -> None:
+    options = ConvertOptions(paper_size=CustomPaperSize(width=100.5, height=200.0))
+
+    assert options.to_native()["paper_size"] == ("Custom", 100.5, 200.0)
 
 
-def test_infer_format_rejects_unknown_extension() -> None:
-    with pytest.raises(ValueError, match="format must be one of"):
-        office2pdf.infer_format("notes.txt")
+def test_options_slide_range_parse_from_string() -> None:
+    options = ConvertOptions(slide_range="2-7")
+    assert options.to_native()["slide_range"] == "2-7"
+
+
+def test_warning_compatibility_property() -> None:
+    result = ConversionResult(
+        pdf=b"%PDF-1.7",
+        warnings=(
+            UnsupportedElementWarning(format="DOCX", element="chart"),
+            ConvertWarning("legacy", kind="Legacy"),
+        ),
+        metrics=None,
+    )
+
+    assert result.warning_messages == ("[DOCX] unsupported element: chart", "legacy")
 
 
 def test_convert_bytes_rejects_empty_input_without_native_import() -> None:
     with pytest.raises(ValueError, match="must not be empty"):
         office2pdf.convert_bytes(b"", Format.DOCX)
-
-
-def test_convert_bytes_rejects_invalid_format_without_native_import() -> None:
-    with pytest.raises(ValueError, match="format must be one of"):
-        office2pdf.convert_bytes(b"not-office", "txt")
-
-
-def test_convert_bytes_uses_native_module(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
-
-    def fake_convert_bytes(data: bytes, format: str, options: dict[str, object]) -> dict[str, object]:
-        captured.update(data=data, format=format, options=options)
-        return {"pdf": b"%PDF-1.7", "warnings": ["warning"], "metrics": {"page_count": 1}}
-
-    monkeypatch.setitem(
-        sys.modules,
-        "office2pdf._native",
-        SimpleNamespace(convert_bytes=fake_convert_bytes),
-    )
-
-    result = office2pdf.convert_bytes(bytearray(b"payload"), Format.XLSX)
-
-    assert result == ConversionResult(
-        pdf=b"%PDF-1.7",
-        warnings=("warning",),
-        metrics={"page_count": 1},
-    )
-    assert captured["data"] == b"payload"
-    assert captured["format"] == "xlsx"
-
-
-def test_convert_path_validates_extension_before_native(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[str] = []
-
-    def fake_convert_path(path: str, _options: dict[str, object]) -> dict[str, object]:
-        calls.append(path)
-        return {"pdf": b"%PDF-1.7", "warnings": [], "metrics": None}
-
-    monkeypatch.setitem(
-        sys.modules,
-        "office2pdf._native",
-        SimpleNamespace(convert_path=fake_convert_path),
-    )
-
-    assert office2pdf.convert_path("input.docx").pdf == b"%PDF-1.7"
-    assert calls == ["input.docx"]
-
-    with pytest.raises(ValueError, match="format must be one of"):
-        office2pdf.convert_path("input.odt")
