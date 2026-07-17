@@ -1,6 +1,6 @@
 [package]
 name = "office2pdf-python"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "PyO3 bindings for office2pdf"
@@ -12,5 +12,5 @@ name = "_native"
 crate-type = ["cdylib"]
 
 [dependencies]
-office2pdf = "0.6"
+office2pdf = { version = "0.6.2", features = ["pdf-ops"] }
 pyo3 = { version = "0.22", features = ["abi3-py310", "extension-module"] }

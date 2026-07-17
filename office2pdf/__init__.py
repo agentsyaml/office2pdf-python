@@ -42,7 +42,7 @@ from .options import ConvertOptions
 try:
     __version__ = metadata.version("office2pdf-python")
 except metadata.PackageNotFoundError:
-    __version__ = "0.2.0"
+    __version__ = "0.3.0"
 
 
 __all__ = [

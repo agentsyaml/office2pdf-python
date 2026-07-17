@@ -96,7 +96,7 @@ All options are stored in a Python dataclass and translated to native options vi
 - `streaming_chunk_size: int | None`
 - `include_warnings: bool`
 
-Unsupported options are rejected to preserve API compatibility with upstream `office2pdf 0.6.0`:
+Unsupported options are rejected to preserve API compatibility with upstream `office2pdf 0.6.2`:
 
 - `page_range: str | None`
 - `memory_limit_mb: int | None`
@@ -156,9 +156,9 @@ Re-exported exception hierarchy:
 
 ## API scope
 
-Version `0.2.0` exposes the upstream `office2pdf 0.6.0` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
+Version `0.3.0` exposes the upstream `office2pdf 0.6.2` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
 
-The upstream `pdf_ops` feature (`page_count`, `merge`, `split`), internal IR/parser/render modules, TypeScript helpers, and WASM APIs are intentionally out of scope for this Python release.
+The upstream `pdf-ops` APIs (`page_count`, `merge`, `split`), internal IR/parser/render modules, TypeScript helpers, and WASM APIs are intentionally out of scope for this Python release.
 
 ## Local development
 
@@ -206,12 +206,12 @@ Create a matching GitHub environment named `pypi` and require manual approval fo
 To publish a release automatically, update the version in `pyproject.toml` and `Cargo.toml`, commit the change, then push a matching tag:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 The tag push starts `.github/workflows/release.yml`, builds artifacts, publishes to PyPI after the `pypi` environment approval, and creates a GitHub Release for tag-triggered runs.
 
 ## Upstream dependency
 
-This package wraps `office2pdf = "0.6"` from crates.io. The upstream project is Apache-2.0 licensed and hosted at <https://github.com/developer0hye/office2pdf>.
+This package wraps `office2pdf = "0.6.2"` from crates.io. The upstream project is Apache-2.0 licensed and hosted at <https://github.com/developer0hye/office2pdf>.
