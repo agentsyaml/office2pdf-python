@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use office2pdf::config::{ConvertOptions, Format, PaperSize, PdfStandard, SlideRange};
+use office2pdf::config::{
+    ConvertOptions, Format, PaperSize, PdfStandard, SlideRange, XlsxUiScript,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyTuple};
 
@@ -32,6 +34,10 @@ fn parse_pdf_standard(value: &str) -> PyResult<PdfStandard> {
             "unsupported pdf_standard {other:?}; expected 'pdf/a-2b'",
         ))),
     }
+}
+
+fn parse_xlsx_ui_script(value: &str) -> PyResult<XlsxUiScript> {
+    XlsxUiScript::parse(value).map_err(PyErr::new::<UnsupportedOptionError, _>)
 }
 
 fn parse_sheet_names(value: &Bound<'_, PyAny>) -> PyResult<Vec<String>> {
@@ -83,7 +89,7 @@ fn reject_if_present(value: Option<&Bound<'_, PyAny>>, name: &str) -> PyResult<(
             return Ok(());
         }
         return Err(PyErr::new::<UnsupportedOptionError, _>(format!(
-            "{name} is not supported by upstream office2pdf 0.6",
+            "{name} is not supported by upstream office2pdf 0.9",
         )));
     }
     Ok(())
@@ -132,6 +138,18 @@ pub(crate) fn parse_options(
 
     converted.sheet_names = sheet_names.or(sheet_filter);
 
+    if let Some(value) = options.get_item("xlsx_ui_script")? {
+        if !value.is_none() {
+            converted.xlsx_ui_script = parse_xlsx_ui_script(&value.extract::<String>()?)?;
+        }
+    }
+
+    if let Some(value) = options.get_item("include_hidden_slides")? {
+        if !value.is_none() {
+            converted.include_hidden_slides = value.extract::<bool>()?;
+        }
+    }
+
     if let Some(value) = options.get_item("slide_range")? {
         if !value.is_none() {
             converted.slide_range = Some(
@@ -156,6 +174,19 @@ pub(crate) fn parse_options(
     if let Some(value) = options.get_item("font_paths")? {
         if !value.is_none() {
             converted.font_paths = parse_font_paths(&value)?;
+        }
+    }
+
+    if let Some(value) = options.get_item("last_resort_font_family")? {
+        if !value.is_none() {
+            let family = value.extract::<String>()?;
+            let family = family.trim();
+            if family.is_empty() {
+                return Err(PyErr::new::<UnsupportedOptionError, _>(
+                    "last_resort_font_family must not be empty",
+                ));
+            }
+            converted.last_resort_font_family = Some(family.to_string());
         }
     }
 

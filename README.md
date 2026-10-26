@@ -57,6 +57,15 @@ The CLI accepts DOCX, PPTX, and XLSX input paths and writes the converted PDF by
 
 `PdfStandard.from_value()` accepts both forms and related normalizations (`"pdf/a-2b"`, `"pdfa2b"`).
 
+### `XlsxUiScript`
+
+`XlsxUiScript` selects which Excel user-interface language an XLSX conversion reproduces when resolving theme fonts (`<scheme val="minor"/>`):
+
+- `XlsxUiScript.HANGUL` (`"hangul"`) — Korean UI Excel; upstream default.
+- `XlsxUiScript.LATIN` (`"latin"`) — English, German, Danish, and other Latin-script Excel.
+
+`XlsxUiScript.from_value()` accepts both names case-insensitively.
+
 ### `PaperSize`
 
 - `PaperSize.A4`
@@ -76,9 +85,17 @@ All options are stored in a Python dataclass and translated to native options vi
 
   These are aliases for XLSX sheet selection. If both are provided, they must be equal.
 
+- `xlsx_ui_script: XlsxUiScript | str | None`
+
+  Picks the theme face an XLSX scheme font resolves to. `None` keeps the upstream default (`hangul`).
+
 - `slide_range: SlideRange | str | None`
 
   `SlideRange` supports `"1-5"` parsing and also accepts explicit `SlideRange(1, 5)`. Values are normalized to `start-end` strings for native conversion.
+
+- `include_hidden_slides: bool`
+
+  Includes PPTX slides marked hidden. Defaults to `False`, matching PowerPoint PDF export. `slide_range` still counts source slide ordinals.
 
 - `pdf_standard: PdfStandard | str | None`
 
@@ -89,6 +106,10 @@ All options are stored in a Python dataclass and translated to native options vi
   String values normalize to named page sizes.
 
 - `font_paths: Sequence[str | pathlib.Path]`
+- `last_resort_font_family: str | None`
+
+  Family appended to every generated font chain, so a caller-provided face can cover glyphs the document's own fonts cannot. Must be non-empty. Load the face itself through `font_paths`.
+
 - `landscape: bool | None`
 - `tagged: bool | None`
 - `pdf_ua: bool | None`
@@ -96,7 +117,7 @@ All options are stored in a Python dataclass and translated to native options vi
 - `streaming_chunk_size: int | None`
 - `include_warnings: bool`
 
-Unsupported options are rejected to preserve API compatibility with upstream `office2pdf 0.6.2`:
+Unsupported options are rejected to preserve API compatibility with upstream `office2pdf 0.9.1`:
 
 - `page_range: str | None`
 - `memory_limit_mb: int | None`
@@ -156,7 +177,7 @@ Re-exported exception hierarchy:
 
 ## API scope
 
-Version `0.3.0` exposes the upstream `office2pdf 0.6.2` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
+Version `0.4.0` exposes the upstream `office2pdf 0.9.1` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
 
 The upstream `pdf-ops` APIs (`page_count`, `merge`, `split`), internal IR/parser/render modules, TypeScript helpers, and WASM APIs are intentionally out of scope for this Python release.
 
@@ -206,12 +227,12 @@ Create a matching GitHub environment named `pypi` and require manual approval fo
 To publish a release automatically, update the version in `pyproject.toml` and `Cargo.toml`, commit the change, then push a matching tag:
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 The tag push starts `.github/workflows/release.yml`, builds artifacts, publishes to PyPI after the `pypi` environment approval, and creates a GitHub Release for tag-triggered runs.
 
 ## Upstream dependency
 
-This package wraps `office2pdf = "0.6.2"` from crates.io. The upstream project is Apache-2.0 licensed and hosted at <https://github.com/developer0hye/office2pdf>.
+This package wraps `office2pdf = "0.9.1"` from crates.io. The upstream project is Apache-2.0 licensed and hosted at <https://github.com/developer0hye/office2pdf>.

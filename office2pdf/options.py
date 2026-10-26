@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .exceptions import UnsupportedOptionError
-from .models import CustomPaperSize, PaperSize, PdfStandard, SlideRange
+from .models import CustomPaperSize, PaperSize, PdfStandard, SlideRange, XlsxUiScript
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +24,10 @@ class ConvertOptions:
     sheet_filter: Sequence[str] | None = None
     page_range: str | None = None
     memory_limit_mb: int | None = None
+    # Appended so positional callers of the previous release keep their meaning.
+    xlsx_ui_script: XlsxUiScript | str | None = None
+    include_hidden_slides: bool = False
+    last_resort_font_family: str | None = None
 
     @staticmethod
     def _ensure_strings(values: Sequence[str] | None, field_name: str) -> tuple[str, ...] | None:
@@ -46,9 +50,9 @@ class ConvertOptions:
 
     def to_native(self) -> dict[str, object]:
         if self.page_range is not None:
-            raise UnsupportedOptionError("page_range is not supported by upstream office2pdf 0.6")
+            raise UnsupportedOptionError("page_range is not supported by upstream office2pdf 0.9")
         if self.memory_limit_mb is not None:
-            raise UnsupportedOptionError("memory_limit_mb is not supported by upstream office2pdf 0.6")
+            raise UnsupportedOptionError("memory_limit_mb is not supported by upstream office2pdf 0.9")
 
         sheet_names = self._ensure_strings(self.sheet_names, "sheet_names")
         sheet_filter = self._ensure_strings(self.sheet_filter, "sheet_filter")
@@ -66,6 +70,15 @@ class ConvertOptions:
             slide_range = None
         else:
             raise TypeError("slide_range must be a SlideRange or string")
+
+        if isinstance(self.xlsx_ui_script, str):
+            xlsx_ui_script = XlsxUiScript.from_value(self.xlsx_ui_script).value
+        elif isinstance(self.xlsx_ui_script, XlsxUiScript):
+            xlsx_ui_script = self.xlsx_ui_script.value
+        elif self.xlsx_ui_script is None:
+            xlsx_ui_script = None
+        else:
+            raise TypeError("xlsx_ui_script must be an XlsxUiScript or string")
 
         if isinstance(self.pdf_standard, str):
             pdf_standard = PdfStandard.from_value(self.pdf_standard).value
@@ -91,6 +104,13 @@ class ConvertOptions:
             raise TypeError("pdf_ua must be bool")
         if self.landscape is not None and not isinstance(self.landscape, bool):
             raise TypeError("landscape must be bool")
+        if not isinstance(self.include_hidden_slides, bool):
+            raise TypeError("include_hidden_slides must be bool")
+        if self.last_resort_font_family is not None:
+            if not isinstance(self.last_resort_font_family, str):
+                raise TypeError("last_resort_font_family must be a string")
+            if not self.last_resort_font_family.strip():
+                raise ValueError("last_resort_font_family must not be empty")
         if not isinstance(self.streaming, bool):
             raise TypeError("streaming must be bool")
         if not isinstance(self.include_warnings, bool):
@@ -103,10 +123,13 @@ class ConvertOptions:
         return {
             "sheet_names": sheet_names,
             "sheet_filter": sheet_filter,
+            "xlsx_ui_script": xlsx_ui_script,
             "slide_range": slide_range,
+            "include_hidden_slides": self.include_hidden_slides,
             "pdf_standard": pdf_standard,
             "paper_size": paper_size,
             "font_paths": self._ensure_paths(self.font_paths),
+            "last_resort_font_family": self.last_resort_font_family,
             "landscape": self.landscape,
             "tagged": self.tagged,
             "pdf_ua": self.pdf_ua,

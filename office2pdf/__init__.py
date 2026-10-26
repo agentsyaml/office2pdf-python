@@ -35,6 +35,7 @@ from .models import (
     PdfStandard,
     SlideRange,
     UnsupportedElementWarning,
+    XlsxUiScript,
 )
 from .options import ConvertOptions
 
@@ -42,7 +43,7 @@ from .options import ConvertOptions
 try:
     __version__ = metadata.version("office2pdf-python")
 except metadata.PackageNotFoundError:
-    __version__ = "0.3.0"
+    __version__ = "0.4.0"
 
 
 __all__ = [
@@ -54,6 +55,7 @@ __all__ = [
     "PaperSize",
     "CustomPaperSize",
     "PdfStandard",
+    "XlsxUiScript",
     "SlideRange",
     "ConvertWarning",
     "UnsupportedElementWarning",

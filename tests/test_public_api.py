@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 import office2pdf
@@ -18,6 +20,7 @@ from office2pdf import (
     UnsupportedElementWarning,
     PartialElementWarning,
     CustomPaperSize,
+    XlsxUiScript,
 )
 
 
@@ -34,6 +37,7 @@ def test_import_and_public_api() -> None:
         "PaperSize",
         "CustomPaperSize",
         "PdfStandard",
+        "XlsxUiScript",
         "SlideRange",
         "ConvertWarning",
         "UnsupportedElementWarning",
@@ -79,10 +83,13 @@ def test_slide_range_parse_and_repr() -> None:
 def test_parse_options_with_alias_and_conflict() -> None:
     options = ConvertOptions(
         sheet_filter=("Sheet1", "Summary"),
+        xlsx_ui_script=XlsxUiScript.LATIN,
         slide_range=SlideRange(1, 3),
+        include_hidden_slides=True,
         paper_size=PaperSize.A4,
         landscape=True,
         font_paths=("/tmp/fonts",),
+        last_resort_font_family="Noto Sans",
         pdf_standard=PdfStandard.PDF_A_2_B,
         tagged=True,
         pdf_ua=False,
@@ -94,12 +101,15 @@ def test_parse_options_with_alias_and_conflict() -> None:
     assert options.to_native() == {
         "sheet_names": ("Sheet1", "Summary"),
         "sheet_filter": ("Sheet1", "Summary"),
+        "xlsx_ui_script": "latin",
         "slide_range": "1-3",
+        "include_hidden_slides": True,
         "paper_size": ("Named", "a4"),
         "landscape": True,
         "tagged": True,
         "pdf_ua": False,
         "font_paths": ("/tmp/fonts",),
+        "last_resort_font_family": "Noto Sans",
         "pdf_standard": "pdf/a-2b",
         "include_warnings": False,
         "page_range": None,
@@ -125,6 +135,54 @@ def test_unsupported_compatibility_options_raise(options: ConvertOptions, messag
 
     with pytest.raises(UnsupportedOptionError, match=message):
         options.to_native()
+
+
+def test_unsupported_compatibility_messages_name_upstream_version() -> None:
+    from office2pdf import UnsupportedOptionError
+
+    with pytest.raises(UnsupportedOptionError, match="office2pdf 0.9"):
+        ConvertOptions(page_range="1-2").to_native()
+    with pytest.raises(UnsupportedOptionError, match="office2pdf 0.9"):
+        ConvertOptions(memory_limit_mb=128).to_native()
+
+
+def test_options_new_fields_default() -> None:
+    native = ConvertOptions().to_native()
+
+    assert native["xlsx_ui_script"] is None
+    assert native["include_hidden_slides"] is False
+    assert native["last_resort_font_family"] is None
+
+
+def test_options_xlsx_ui_script_normalization() -> None:
+    assert ConvertOptions(xlsx_ui_script="LATIN").to_native()["xlsx_ui_script"] == "latin"
+    assert ConvertOptions(xlsx_ui_script=" Hangul ").to_native()["xlsx_ui_script"] == "hangul"
+    assert (
+        ConvertOptions(xlsx_ui_script=XlsxUiScript.HANGUL).to_native()["xlsx_ui_script"] == "hangul"
+    )
+    assert XlsxUiScript.from_value("latin") is XlsxUiScript.LATIN
+
+    with pytest.raises(ValueError, match="hangul, latin"):
+        ConvertOptions(xlsx_ui_script="korean").to_native()
+    with pytest.raises(TypeError, match="xlsx_ui_script"):
+        ConvertOptions(xlsx_ui_script=1).to_native()  # type: ignore[arg-type]
+
+
+def test_options_include_hidden_slides_requires_bool() -> None:
+    assert ConvertOptions(include_hidden_slides=True).to_native()["include_hidden_slides"] is True
+
+    with pytest.raises(TypeError, match="include_hidden_slides must be bool"):
+        ConvertOptions(include_hidden_slides=1).to_native()  # type: ignore[arg-type]
+
+
+def test_options_last_resort_font_family_validation() -> None:
+    options = ConvertOptions(last_resort_font_family="Noto Sans SC")
+    assert options.to_native()["last_resort_font_family"] == "Noto Sans SC"
+
+    with pytest.raises(TypeError, match="last_resort_font_family must be a string"):
+        ConvertOptions(last_resort_font_family=Path("font.ttf")).to_native()  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="must not be empty"):
+        ConvertOptions(last_resort_font_family="   ").to_native()
 
 
 def test_options_custom_paper_size_to_native() -> None:

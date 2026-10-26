@@ -86,6 +86,21 @@ class PdfStandard(Enum):
         raise ValueError("unsupported pdf_standard; expected 'pdf/a-2b'")
 
 
+class XlsxUiScript(Enum):
+    HANGUL = "hangul"
+    LATIN = "latin"
+
+    @classmethod
+    def from_value(cls, value: XlsxUiScript | str) -> "XlsxUiScript":
+        if isinstance(value, cls):
+            return value
+        normalized = str(value).lower().strip()
+        for item in cls:
+            if item.value == normalized:
+                return item
+        raise ValueError("xlsx_ui_script must be one of: hangul, latin")
+
+
 @dataclass(frozen=True, slots=True)
 class ConvertWarning:
     message: str = ""
@@ -196,6 +211,7 @@ __all__ = [
     "PaperSize",
     "CustomPaperSize",
     "PdfStandard",
+    "XlsxUiScript",
     "ConvertWarning",
     "UnsupportedElementWarning",
     "PartialElementWarning",
