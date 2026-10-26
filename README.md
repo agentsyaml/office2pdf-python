@@ -10,7 +10,7 @@ The package distribution is named `office2pdf-python`; the import package is `of
 python -m pip install office2pdf-python
 ```
 
-Supported Python versions are 3.10 through 3.14. Wheels use PyO3 `abi3-py310`, so one wheel can support all compatible CPython versions for the same platform. CI targets Linux, macOS, and Windows.
+Supported Python versions are 3.10 through 3.14. Wheels use PyO3 `abi3-py310`, so one wheel can support all compatible CPython versions for the same platform. CI targets Linux, macOS, and Windows; release wheels cover Linux (x86_64 and aarch64, glibc and musl), macOS (Intel and Apple Silicon), and Windows (x86_64).
 
 ## Usage
 
@@ -212,7 +212,7 @@ Release-style wheel building is checked once in a dedicated wheel smoke job. Ful
 
 ## Release
 
-The release workflow runs on `v*` tags or manual dispatch. It builds Linux, macOS, and Windows wheels plus an sdist, then publishes with PyPI Trusted Publishing using GitHub OIDC (`id-token: write`). No PyPI API token is required.
+The release workflow runs on `v*` tags or manual dispatch. It builds wheels for Linux (x86_64 and aarch64, manylinux_2_17 and musllinux_1_2), macOS (x86_64 and arm64), and Windows (x86_64) plus an sdist, then publishes with PyPI Trusted Publishing using GitHub OIDC (`id-token: write`). No PyPI API token is required. A manual dispatch builds and uploads the artifacts without publishing.
 
 Before the first publish, configure PyPI with a pending trusted publisher:
 
