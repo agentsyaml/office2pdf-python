@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
@@ -144,6 +145,41 @@ def test_unsupported_compatibility_messages_name_upstream_version() -> None:
         ConvertOptions(page_range="1-2").to_native()
     with pytest.raises(UnsupportedOptionError, match="office2pdf 0.9"):
         ConvertOptions(memory_limit_mb=128).to_native()
+
+
+def test_options_positional_order_is_append_only() -> None:
+    names = [field.name for field in fields(ConvertOptions)]
+
+    # 0.3.0 field order; new fields may only be appended so positional callers keep meaning.
+    assert names[:14] == [
+        "sheet_names",
+        "slide_range",
+        "pdf_standard",
+        "paper_size",
+        "font_paths",
+        "landscape",
+        "tagged",
+        "pdf_ua",
+        "streaming",
+        "streaming_chunk_size",
+        "include_warnings",
+        "sheet_filter",
+        "page_range",
+        "memory_limit_mb",
+    ]
+    assert names[14:] == ["xlsx_ui_script", "include_hidden_slides", "last_resort_font_family"]
+
+    legacy = ConvertOptions(None, "1-3", "pdf/a-2b", "a4", ("/tmp/fonts",), True, True, False)
+    native = legacy.to_native()
+
+    assert native["slide_range"] == "1-3"
+    assert native["pdf_standard"] == "pdf/a-2b"
+    assert native["paper_size"] == ("Named", "a4")
+    assert native["font_paths"] == ("/tmp/fonts",)
+    assert native["landscape"] is True
+    assert native["tagged"] is True
+    assert native["pdf_ua"] is False
+    assert native["xlsx_ui_script"] is None
 
 
 def test_options_new_fields_default() -> None:

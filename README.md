@@ -177,7 +177,7 @@ Re-exported exception hierarchy:
 
 ## API scope
 
-Version `0.4.0` exposes the upstream `office2pdf 0.9.1` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
+Version `0.4.1` exposes the upstream `office2pdf 0.9.1` conversion API: file/bytes conversion, conversion options, structured warnings, metrics, and typed errors.
 
 The upstream `pdf-ops` APIs (`page_count`, `merge`, `split`), internal IR/parser/render modules, TypeScript helpers, and WASM APIs are intentionally out of scope for this Python release.
 
@@ -227,8 +227,8 @@ Create a matching GitHub environment named `pypi` and require manual approval fo
 To publish a release automatically, update the version in `pyproject.toml` and `Cargo.toml`, commit the change, then push a matching tag:
 
 ```bash
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.4.1
+git push origin v0.4.1
 ```
 
 The tag push starts `.github/workflows/release.yml`, builds artifacts, publishes to PyPI after the `pypi` environment approval, and creates a GitHub Release for tag-triggered runs.
